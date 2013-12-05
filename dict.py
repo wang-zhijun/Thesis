@@ -222,8 +222,11 @@ class SUBUI(wx.Frame):
 			try:
 				self.last_word = self.zh_li.pop()
 			except IndexError:
-				pass
-			
+				self.word_search.Clear()
+				self.zh_meaning.Clear()
+				self.memo.Clear()
+				return 	
+
 			self.zh_meaning.SetValue(self.db_words[self.last_word].decode('utf-8'))
 			try:
 				self.memo.SetValue(self.db_memo[self.last_word].decode('utf-8'))
@@ -250,7 +253,9 @@ class SUBUI(wx.Frame):
 		try:
 			self.last_word = self.zh_li.pop()
 		except IndexError:
-			pass
+			self.word_search.Clear()
+			self.zh_meaning.Clear()
+			self.memo.Clear()
 
 		self.zh_meaning.SetValue(self.db_words[self.last_word].decode('utf-8'))
 		try:
