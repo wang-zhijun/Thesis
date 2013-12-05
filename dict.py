@@ -23,7 +23,8 @@ class Example(wx.Frame):
 		self.InitUI()
 		self.Centre()
 		self.Show()     
-        
+	#	self.create_files()
+
 	def InitUI(self):
     
 		panel = wx.Panel(self, -1)
@@ -75,12 +76,14 @@ class Example(wx.Frame):
         
 	def OnSearch(self, event):
 		# Get input word to search
-		self.word = self.word_search.GetValue()
+		self.word = self.word_search.GetValue() or None
+		if self.word is None:
+			self.zh_meaning.Clear()
+			return 
 		# create word url
 		zh_word_url = 'http://dict.cn/'+self.word
-		jp_word_url = 'http://kotobank.jp/ejword/'+self.word
+
 		zh_word_content = ""
-		jp_word_content = ""
 
 		if self.zh_check.IsChecked():
 			
@@ -90,14 +93,12 @@ class Example(wx.Frame):
 
 			phonetic = soup.find('div', class_ = 'phonetic')
 			# if can not find the word
-			if phonetic is None:
-				self.zh_meaning.SetValue('Cannot find the word')
-				return 
-			else:
+			try:
 				pronunciations = phonetic.find_all('bdo')
 				pronun = pronunciations[0].find(text=True)
 				zh_word_content = pronun + '\n\n'
-
+			except AttributeError, IndexError:
+				pass
 			# basic meanings of the word
 			layout_dual = soup.find('div', class_ = 'layout dual')
 			if layout_dual is None:
@@ -115,6 +116,17 @@ class Example(wx.Frame):
 				self.zh_meaning.SetValue(zh_word_content.encode('utf-8'))
 
 		self.word_search.SelectAll()
+		
+		##############################################
+		#try to find the memo about the word from file
+		##############################################
+		f = dbm.open('memo_words', 'c')
+		try:
+			self.memo.SetValue(f[self.word].decode('utf-8'))
+		except KeyError, e:
+			self.memo.Clear()
+		finally:
+			f.close()	
 
 	def	OnSaveMemo(self,e):
 		zh_file = dbm.open('zh_words','c')  
@@ -194,8 +206,7 @@ class SUBUI(wx.Frame):
 	def on_close(self, evt):
 		self.MakeModal(False)
 		evt.Skip()	
-		
-			
+
 	
 if __name__ == '__main__':
     app = wx.App(False)
