@@ -14,6 +14,8 @@ from bs4 import BeautifulSoup
 from colorama import Fore
 
 import dbm
+# for exercise mode, shuffle the words list
+from random import shuffle
 
 class Example(wx.Frame):
   
@@ -76,6 +78,7 @@ class Example(wx.Frame):
         
 	def OnSearch(self, event):
 		# Get input word to search
+		#http://stackoverflow.com/questions/17887503/how-can-i-improve-this-code-for-checking-if-text-fields-are-empty-in-wxpython
 		self.word = self.word_search.GetValue() or None
 		if self.word is None:
 			self.zh_meaning.Clear()
@@ -176,6 +179,7 @@ class SUBUI(wx.Frame):
 		vbox.Add(hbox2, flag=wx.EXPAND|wx.LEFT|wx.RIGHT|wx.TOP, border=10)
 		vbox.Add(hbox3, flag=wx.EXPAND|wx.LEFT|wx.RIGHT|wx.TOP, border=10)
 
+
 		panel.SetSizer(vbox)
 
 		self.start_btn.SetFocus()
@@ -184,6 +188,7 @@ class SUBUI(wx.Frame):
 		self.Bind(wx.EVT_TIMER, self.update, self.timer1)
 		self.Bind(wx.EVT_BUTTON, self.OnStartTimer, self.start_btn)
 		self.Bind(wx.EVT_CLOSE, self.on_close)
+		self.Bind(wx.EVT_TEXT_ENTER, self.OnCheck, self.word_search)
 
 		font = wx.Font(15, wx.DEFAULT, wx.NORMAL, wx.NORMAL)
 		self.elapsed_time.SetFont(font)
@@ -197,6 +202,7 @@ class SUBUI(wx.Frame):
 			self.word_search.SetFocus() 
 			self.timer1.Start(1000)
 			self.start = time.time()	
+			self.exercise_mode()
 	
 	def update(self, event):
 			end = time.time() - self.start
@@ -207,6 +213,52 @@ class SUBUI(wx.Frame):
 		self.MakeModal(False)
 		evt.Skip()	
 
+	# Get the value from word_search area
+	def OnCheck(self, event):
+
+		#http://effbot.org/librarybook/dbm.htm
+		input_str = self.word_search.GetValue()
+		if input_str == self.last_word:
+			try:
+				self.last_word = self.zh_li.pop()
+			except IndexError:
+				pass
+			
+			self.zh_meaning.SetValue(self.db_words[self.last_word].decode('utf-8'))
+			try:
+				self.memo.SetValue(self.db_memo[self.last_word].decode('utf-8'))
+			except KeyError:
+				pass
+
+			self.word_search.Clear()
+
+		else:
+			self.word_search.SetValue(self.last_word)
+			self.word_search.SelectAll()
+
+	def exercise_mode(self):
+		self.db_memo = dbm.open('memo_words', 'c')
+		self.db_words = dbm.open('zh_words', 'c')
+
+
+		self.zh_li = []
+
+		for key in self.db_words.keys():
+			self.zh_li.append(key)
+		shuffle(self.zh_li)
+	
+		try:
+			self.last_word = self.zh_li.pop()
+		except IndexError:
+			pass
+
+		self.zh_meaning.SetValue(self.db_words[self.last_word].decode('utf-8'))
+		try:
+			self.memo.SetValue(self.db_memo[self.last_word].decode('utf-8'))
+		except KeyError:
+			pass
+
+			
 	
 if __name__ == '__main__':
     app = wx.App(False)
