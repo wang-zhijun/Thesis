@@ -100,13 +100,22 @@ class Example(wx.Frame):
 				pronunciations = phonetic.find_all('bdo')
 				pronun = pronunciations[0].find(text=True)
 				zh_word_content = pronun + '\n\n'
-			except AttributeError, IndexError:
+			except AttributeError:
+				pass
+			except IndexError:
 				pass
 			# basic meanings of the word
 			layout_dual = soup.find('div', class_ = 'layout dual')
 			if layout_dual is None:
 				basic = soup.find('div', class_ = 'layout basic clearfix')
-				word_meanings = basic.find_all('strong')
+				try:
+					word_meanings = basic.find_all('strong')
+				except AttributeError:
+					self.zh_meaning.Clear()
+					self.memo.Clear()
+					self.word_search.SelectAll()
+					return 
+
 				for meaning in word_meanings:
 					text = meaning.find(text=True)
 					zh_word_content = zh_word_content + text + '\n\n'
@@ -225,6 +234,9 @@ class SUBUI(wx.Frame):
 				self.word_search.Clear()
 				self.zh_meaning.Clear()
 				self.memo.Clear()
+				self.timer1.Stop()
+				self.start_btn.SetLabel("Start")
+				self.start_btn.SetFocus()
 				return 	
 
 			self.zh_meaning.SetValue(self.db_words[self.last_word].decode('utf-8'))
@@ -256,6 +268,7 @@ class SUBUI(wx.Frame):
 			self.word_search.Clear()
 			self.zh_meaning.Clear()
 			self.memo.Clear()
+			return 
 
 		self.zh_meaning.SetValue(self.db_words[self.last_word].decode('utf-8'))
 		try:
