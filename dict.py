@@ -174,22 +174,27 @@ class SUBUI(wx.Frame):
 		hbox1 = wx.BoxSizer(wx.HORIZONTAL)
 		hbox2 = wx.BoxSizer(wx.HORIZONTAL)	
 		hbox3 = wx.BoxSizer(wx.HORIZONTAL)
+		hbox4 = wx.BoxSizer(wx.HORIZONTAL)
 
 		self.zh_meaning = wx.TextCtrl(panel, id = 50, size=(350,170),style = wx.TE_MULTILINE)
 		self.memo = wx.TextCtrl(panel, id = 60, style = wx.TE_MULTILINE)
 		self.word_search = wx.TextCtrl(panel, id = 70, style = wx.PROCESS_ENTER)
 		self.start_btn = wx.Button(panel, id = 72,label='Start')
 		self.elapsed_time = wx.StaticText(panel, id = 74 )
+		self.del_btn = wx.Button(panel, id = 80, label = 'Delete word')
+
 
 		hbox1.Add(self.zh_meaning, proportion=1, flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=10)
 		hbox2.Add(self.memo, proportion=1, flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=10)
 		hbox3.Add(self.word_search, proportion=2, flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=10)
 		hbox3.Add(self.start_btn, proportion=1, flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=10)
 		hbox3.Add(self.elapsed_time, proportion=1, flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=10)
+		hbox4.Add(self.del_btn, flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=10)
 
 		vbox.Add(hbox1, flag=wx.EXPAND|wx.LEFT|wx.RIGHT|wx.TOP, border=10)
 		vbox.Add(hbox2, flag=wx.EXPAND|wx.LEFT|wx.RIGHT|wx.TOP, border=10)
 		vbox.Add(hbox3, flag=wx.EXPAND|wx.LEFT|wx.RIGHT|wx.TOP, border=10)
+		vbox.Add(hbox4, flag=wx.EXPAND|wx.LEFT|wx.RIGHT|wx.TOP, border=10)
 
 
 		panel.SetSizer(vbox)
@@ -201,6 +206,7 @@ class SUBUI(wx.Frame):
 		self.Bind(wx.EVT_BUTTON, self.OnStartTimer, self.start_btn)
 		self.Bind(wx.EVT_CLOSE, self.on_close)
 		self.Bind(wx.EVT_TEXT_ENTER, self.OnCheck, self.word_search)
+		self.Bind(wx.EVT_BUTTON, self.OnDeleteWord, self.del_btn)
 
 		font = wx.Font(15, wx.DEFAULT, wx.NORMAL, wx.NORMAL)
 		self.elapsed_time.SetFont(font)
@@ -240,6 +246,8 @@ class SUBUI(wx.Frame):
 				self.timer1.Stop()
 				self.start_btn.SetLabel("Start")
 				self.start_btn.SetFocus()
+				self.db_memo.close()
+				self.db_words.close()
 				return 	
 
 			self.zh_meaning.SetValue(self.db_words[self.last_word].decode('utf-8'))
@@ -268,9 +276,9 @@ class SUBUI(wx.Frame):
 		try:
 			self.last_word = self.zh_li.pop()
 		except IndexError:
-			self.word_search.Clear()
 			self.zh_meaning.Clear()
 			self.memo.Clear()
+			self.word_search.Clear()
 			return 
 
 		self.zh_meaning.SetValue(self.db_words[self.last_word].decode('utf-8'))
@@ -279,7 +287,27 @@ class SUBUI(wx.Frame):
 		except KeyError:
 			pass
 
-			
+	def OnDeleteWord(self, event):
+		self.db_memo = dbm.open('memo_words', 'c')
+		self.db_words = dbm.open('zh_words', 'c')
+		try:
+			del self.db_words[self.last_word]	
+			del self.db_memo[self.last_word]	
+		except KeyError:
+			pass
+		try:
+			self.last_word = self.zh_li.pop()
+		except IndexError:
+			self.word_search.Clear()
+			self.zh_meaning.Clear()
+			self.memo.Clear()
+			return
+		
+		self.zh_meaning.SetValue(self.db_words[self.last_word].decode('utf-8'))
+		try:
+			self.memo.SetValue(self.db_memo[self.last_word].decode('utf-8'))
+		except KeyError:
+			pass
 	
 if __name__ == '__main__':
     app = wx.App(False)
