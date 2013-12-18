@@ -41,7 +41,8 @@ class Example(wx.Frame):
 
 		# create,add word area and search button
 		self.word_search = wx.TextCtrl(panel, id = 10, style = wx.PROCESS_ENTER)
-		self.zh_check = wx.CheckBox(panel, label='中文')
+		self.icon = wx.StaticBitmap(panel, bitmap=wx.Bitmap('resize_sound.gif'))
+		self.zh_check = wx.CheckBox(panel, label='中文', size=(30,30))
 		self.zh_check.SetValue(True)
 		
   
@@ -54,7 +55,8 @@ class Example(wx.Frame):
 		save_btn = wx.Button(panel, label='Save')
 		self.exercise_btn = wx.Button(panel, label='Exercise')
 			
-		hbox1.Add(self.word_search, proportion=5, flag=wx.EXPAND|wx.LEFT|wx.RIGHT|wx.TOP, border=10)
+		hbox1.Add(self.word_search, proportion=4, flag=wx.EXPAND|wx.LEFT|wx.RIGHT|wx.TOP, border=10)
+		hbox1.Add(self.icon, flag=wx.EXPAND|wx.LEFT|wx.RIGHT|wx.TOP, border=10)
 		hbox1.Add(self.zh_check, proportion=1, flag=wx.LEFT|wx.TOP, border=10)
 		hbox2.Add(self.zh_meaning, proportion=1, flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=10)
 		hbox3.Add(self.memo, proportion=1, flag=wx.EXPAND|wx.LEFT|wx.RIGHT|wx.TOP, border=10)
@@ -73,9 +75,15 @@ class Example(wx.Frame):
 		self.word_search.Bind(wx.EVT_TEXT_ENTER, self.OnSearch)
 		save_btn.Bind(wx.EVT_BUTTON, self.OnSaveMemo)
 		self.exercise_btn.Bind(wx.EVT_BUTTON, self.InitSUBUI) 
+		self.icon.Bind(wx.EVT_LEFT_DOWN, self.OnSound)
 		panel.SetSizer(vbox)
-		
-        
+
+		mkdir_p('mp3_dir')
+
+		font = wx.Font(12, wx.DEFAULT, wx.NORMAL, wx.NORMAL)
+		self.word_search.SetFont(font)
+		self.zh_meaning.SetFont(font)
+		self.memo.SetFont(font)
 	def OnSearch(self, event):
 		# Get input word to search
 		#http://stackoverflow.com/questions/17887503/how-can-i-improve-this-code-for-checking-if-text-fields-are-empty-in-wxpython
@@ -87,6 +95,11 @@ class Example(wx.Frame):
 		zh_word_url = 'http://dict.cn/'+self.word
 
 		zh_word_content = ""
+
+		audio_url = "http://translate.google.com/translate_tts?tl=en&q="+self.word
+		audio_dir = os.getcwd()+"/mp3_dir"
+		audio_name = audio_dir+'/'+self.word+'.mp3'
+
 
 		if self.zh_check.IsChecked():
 			
@@ -127,6 +140,8 @@ class Example(wx.Frame):
 					zh_word_content = zh_word_content + li.get_text() + '\n\n'
 				self.zh_meaning.SetValue(zh_word_content.encode('utf-8'))
 
+		process_audio(audio_url, audio_name)	
+		
 		self.word_search.SelectAll()
 		
 		##############################################
@@ -158,6 +173,10 @@ class Example(wx.Frame):
 		# MakeModal(modal):Disables all other windows in the application so that the user can only interact with this window.
 		exercise_ui.MakeModal(True)
 
+
+	def OnSound(self, event):
+		pass	
+
 class SUBUI(wx.Frame):
 	def __init__(self, parent, title):
 		super(SUBUI, self).__init__(parent, title=title, size=(560, 400))
@@ -165,6 +184,17 @@ class SUBUI(wx.Frame):
 		self.InitUI()
 
 	def InitUI(self):
+
+		self.db_memo = dbm.open('memo_words', 'c')
+		self.db_words = dbm.open('zh_words', 'c')
+		self.zh_li = []
+		for key in self.db_words.keys():
+			self.zh_li.append(key)
+		shuffle(self.zh_li)
+
+		# gauge count
+		self.count = 0
+		self.task_range = len(self.zh_li)
 		panel = wx.Panel(self, -1)
 		panel.SetBackgroundColour('#6f8089')
 
@@ -174,22 +204,27 @@ class SUBUI(wx.Frame):
 		hbox1 = wx.BoxSizer(wx.HORIZONTAL)
 		hbox2 = wx.BoxSizer(wx.HORIZONTAL)	
 		hbox3 = wx.BoxSizer(wx.HORIZONTAL)
+		hbox4 = wx.BoxSizer(wx.HORIZONTAL)
 
 		self.zh_meaning = wx.TextCtrl(panel, id = 50, size=(350,170),style = wx.TE_MULTILINE)
 		self.memo = wx.TextCtrl(panel, id = 60, style = wx.TE_MULTILINE)
 		self.word_search = wx.TextCtrl(panel, id = 70, style = wx.PROCESS_ENTER)
 		self.start_btn = wx.Button(panel, id = 72,label='Start')
-		self.elapsed_time = wx.StaticText(panel, id = 74 )
+		self.gauge = wx.Gauge(panel,range=self.task_range)
+		self.del_btn = wx.Button(panel, id = 80, label = 'Delete word')
+
 
 		hbox1.Add(self.zh_meaning, proportion=1, flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=10)
 		hbox2.Add(self.memo, proportion=1, flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=10)
-		hbox3.Add(self.word_search, proportion=2, flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=10)
+		hbox3.Add(self.word_search, proportion=1, flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=10)
 		hbox3.Add(self.start_btn, proportion=1, flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=10)
-		hbox3.Add(self.elapsed_time, proportion=1, flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=10)
+		hbox3.Add(self.gauge, proportion=1, flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=10)
+		hbox4.Add(self.del_btn, flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=10)
 
 		vbox.Add(hbox1, flag=wx.EXPAND|wx.LEFT|wx.RIGHT|wx.TOP, border=10)
 		vbox.Add(hbox2, flag=wx.EXPAND|wx.LEFT|wx.RIGHT|wx.TOP, border=10)
 		vbox.Add(hbox3, flag=wx.EXPAND|wx.LEFT|wx.RIGHT|wx.TOP, border=10)
+		vbox.Add(hbox4, flag=wx.EXPAND|wx.LEFT|wx.RIGHT|wx.TOP, border=10)
 
 
 		panel.SetSizer(vbox)
@@ -201,9 +236,12 @@ class SUBUI(wx.Frame):
 		self.Bind(wx.EVT_BUTTON, self.OnStartTimer, self.start_btn)
 		self.Bind(wx.EVT_CLOSE, self.on_close)
 		self.Bind(wx.EVT_TEXT_ENTER, self.OnCheck, self.word_search)
+		self.Bind(wx.EVT_BUTTON, self.OnDeleteWord, self.del_btn)
 
-		font = wx.Font(15, wx.DEFAULT, wx.NORMAL, wx.NORMAL)
-		self.elapsed_time.SetFont(font)
+		font = wx.Font(12, wx.DEFAULT, wx.NORMAL, wx.NORMAL)
+#		self.elapsed_time.SetFont(font)
+		self.zh_meaning.SetFont(font)
+		self.memo.SetFont(font)
 
 	def OnStartTimer(self, event):
 		if self.timer1.IsRunning():
@@ -218,8 +256,8 @@ class SUBUI(wx.Frame):
 	
 	def update(self, event):
 			end = time.time() - self.start
-			elapsed_time = str(int(end)) + ' seconds'
-			self.elapsed_time.SetLabel(elapsed_time)
+#			elapsed_time = str(int(end)) + ' seconds'
+#			self.elapsed_time.SetLabel(elapsed_time)
 	
 	def on_close(self, evt):
 		self.MakeModal(False)
@@ -231,6 +269,17 @@ class SUBUI(wx.Frame):
 		#http://effbot.org/librarybook/dbm.htm
 		input_str = self.word_search.GetValue()
 		if input_str == self.last_word:
+			self.count = self.count + 1
+			self.gauge.SetValue(self.count)
+			if self.count == self.task_range:
+				self.word_search.Clear()
+				self.zh_meaning.Clear()
+				self.memo.Clear()
+				self.timer1.Stop()
+				self.start_btn.SetLabel("Start")
+				self.start_btn.SetFocus()
+				self.gauge.SetLabel("Task Completed")
+				return
 			try:
 				self.last_word = self.zh_li.pop()
 			except IndexError:
@@ -257,14 +306,39 @@ class SUBUI(wx.Frame):
 	def exercise_mode(self):
 		self.db_memo = dbm.open('memo_words', 'c')
 		self.db_words = dbm.open('zh_words', 'c')
-
-
 		self.zh_li = []
-
 		for key in self.db_words.keys():
 			self.zh_li.append(key)
 		shuffle(self.zh_li)
-	
+
+		# gauge count
+		self.count = 0
+		self.task_range = len(self.zh_li)
+
+		self.gauge.SetRange(self.task_range)
+		try:
+			self.last_word = self.zh_li.pop()
+		except IndexError:
+			self.word_search.Clear()
+			self.zh_meaning.Clear()
+			self.memo.Clear()
+			return 
+
+		self.zh_meaning.SetValue(self.db_words[self.last_word].decode('utf-8'))
+		try:
+			self.memo.SetValue(self.db_memo[self.last_word].decode('utf-8'))
+		except KeyError:
+			pass
+		
+	def OnDeleteWord(self,event):
+		
+		try:
+			del self.db_words[self.last_word]
+			del self.db_memo[self.last_word]
+			self.count = self.count + 1
+			self.gauge.SetValue(self.count)
+		except KeyError:
+			pass
 		try:
 			self.last_word = self.zh_li.pop()
 		except IndexError:
@@ -279,9 +353,43 @@ class SUBUI(wx.Frame):
 		except KeyError:
 			pass
 
+def process_audio(audio_url, mp3_name):
+	if os.path.exists(mp3_name):
+		if sys.platform == 'darwin':
+			process = subprocess.Popen(['afplay', mp3_name], stdout=dev_null, stderr=dev_null)
+		else:
+			process = subprocess.Popen(['play', mp3_name], stdout=open("/dev/null","w"), stderr=subprocess.STDOUT)
+#		retcode = process.wait()
+	else:
+		# download mp3 file to $HOME/mp3.dir
+		download_mp3(audio_url, mp3_name)
+		# find wait function on the last line
+		if sys.platform == 'darwin':
+			process = subprocess.Popen(['afplay', mp3_name], stdout=dev_null, stderr=dev_null)
+		else:
+			process = subprocess.Popen(['play', mp3_name], stdout=open("/dev/null","w"), stderr=subprocess.STDOUT)
+#		retcode = process.wait()
+
+
+def download_mp3(audio_url, mp3_name):
+	headers = {'User-Agent':'Mozilla/5.0'}
+	request = urllib2.Request(audio_url, None, headers)
+	mp3file = urllib2.urlopen(request)
+	with open(mp3_name, 'wb') as output_mp3:
+		output_mp3.write(mp3file.read())
 			
-	
+
+def mkdir_p(path):
+	try:
+		os.makedirs(path)
+	except OSError as exc:
+		if exc.errno == errno.EEXIST and os.path.isdir(path):
+			pass
+		else:
+			raise
+
 if __name__ == '__main__':
+
     app = wx.App(False)
     main_frame = Example(None, title='Dictionary')
     app.MainLoop()
