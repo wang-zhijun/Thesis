@@ -25,10 +25,11 @@ class Example(wx.Frame):
 		self.InitUI()
 		self.Centre()
 		self.Show()     
-	#	self.create_files()
-
 	def InitUI(self):
-    
+		self.word=""
+		self.audio_url = ""
+		self.audio_name = ""
+
 		panel = wx.Panel(self, -1)
 		panel.SetBackgroundColour('#6f8089')
 
@@ -175,7 +176,10 @@ class Example(wx.Frame):
 
 
 	def OnSound(self, event):
-		process_audio(self.audio_url, self.audio_name)
+		if self.word is "":
+			return
+		else:
+			process_audio(self.audio_url, self.audio_name)
 
 class SUBUI(wx.Frame):
 	def __init__(self, parent, title):
