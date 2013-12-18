@@ -96,9 +96,9 @@ class Example(wx.Frame):
 
 		zh_word_content = ""
 
-		audio_url = "http://translate.google.com/translate_tts?tl=en&q="+self.word
-		audio_dir = os.getcwd()+"/mp3_dir"
-		audio_name = audio_dir+'/'+self.word+'.mp3'
+		self.audio_url = "http://translate.google.com/translate_tts?tl=en&q="+self.word
+		self.audio_dir = os.getcwd()+"/mp3_dir"
+		self.audio_name = self.audio_dir+'/'+self.word+'.mp3'
 
 
 		if self.zh_check.IsChecked():
@@ -140,7 +140,7 @@ class Example(wx.Frame):
 					zh_word_content = zh_word_content + li.get_text() + '\n\n'
 				self.zh_meaning.SetValue(zh_word_content.encode('utf-8'))
 
-		process_audio(audio_url, audio_name)	
+		process_audio(self.audio_url, self.audio_name)	
 		
 		self.word_search.SelectAll()
 		
@@ -159,10 +159,10 @@ class Example(wx.Frame):
 		zh_file = dbm.open('zh_words','c')  
 		memo_file = dbm.open('memo_words','c')  
 		try:
-			zh_file[self.word] = self.zh_meaning.GetValue().encode('utf-8')		
+			zh_file[self.word] = self.zh_meaning.GetValue().strip().encode('utf-8')		
 		except AttributeError: 
 			return 
-		memo_file[self.word] = self.memo.GetValue().encode('utf-8')		
+		memo_file[self.word] = self.memo.GetValue().strip().encode('utf-8')		
 		zh_file.close()
 		memo_file.close()
 
@@ -175,7 +175,7 @@ class Example(wx.Frame):
 
 
 	def OnSound(self, event):
-		pass	
+		process_audio(self.audio_url, self.audio_name)
 
 class SUBUI(wx.Frame):
 	def __init__(self, parent, title):
@@ -184,6 +184,7 @@ class SUBUI(wx.Frame):
 		self.InitUI()
 
 	def InitUI(self):
+
 		panel = wx.Panel(self, -1)
 		panel.SetBackgroundColour('#6f8089')
 
@@ -193,22 +194,27 @@ class SUBUI(wx.Frame):
 		hbox1 = wx.BoxSizer(wx.HORIZONTAL)
 		hbox2 = wx.BoxSizer(wx.HORIZONTAL)	
 		hbox3 = wx.BoxSizer(wx.HORIZONTAL)
+		hbox4 = wx.BoxSizer(wx.HORIZONTAL)
 
 		self.zh_meaning = wx.TextCtrl(panel, id = 50, size=(350,170),style = wx.TE_MULTILINE)
 		self.memo = wx.TextCtrl(panel, id = 60, style = wx.TE_MULTILINE)
 		self.word_search = wx.TextCtrl(panel, id = 70, style = wx.PROCESS_ENTER)
 		self.start_btn = wx.Button(panel, id = 72,label='Start')
-		self.elapsed_time = wx.StaticText(panel, id = 74 )
+		self.gauge = wx.Gauge(panel)
+		self.del_btn = wx.Button(panel, id = 80, label = 'Delete word')
+
 
 		hbox1.Add(self.zh_meaning, proportion=1, flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=10)
 		hbox2.Add(self.memo, proportion=1, flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=10)
-		hbox3.Add(self.word_search, proportion=2, flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=10)
+		hbox3.Add(self.word_search, proportion=1, flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=10)
 		hbox3.Add(self.start_btn, proportion=1, flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=10)
-		hbox3.Add(self.elapsed_time, proportion=1, flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=10)
+		hbox3.Add(self.gauge, proportion=2, flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=10)
+		hbox4.Add(self.del_btn, flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=10)
 
 		vbox.Add(hbox1, flag=wx.EXPAND|wx.LEFT|wx.RIGHT|wx.TOP, border=10)
 		vbox.Add(hbox2, flag=wx.EXPAND|wx.LEFT|wx.RIGHT|wx.TOP, border=10)
 		vbox.Add(hbox3, flag=wx.EXPAND|wx.LEFT|wx.RIGHT|wx.TOP, border=10)
+		vbox.Add(hbox4, flag=wx.EXPAND|wx.LEFT|wx.RIGHT|wx.TOP, border=10)
 
 
 		panel.SetSizer(vbox)
@@ -220,9 +226,10 @@ class SUBUI(wx.Frame):
 		self.Bind(wx.EVT_BUTTON, self.OnStartTimer, self.start_btn)
 		self.Bind(wx.EVT_CLOSE, self.on_close)
 		self.Bind(wx.EVT_TEXT_ENTER, self.OnCheck, self.word_search)
+		self.Bind(wx.EVT_BUTTON, self.OnDeleteWord, self.del_btn)
 
 		font = wx.Font(12, wx.DEFAULT, wx.NORMAL, wx.NORMAL)
-		self.elapsed_time.SetFont(font)
+#		self.elapsed_time.SetFont(font)
 		self.zh_meaning.SetFont(font)
 		self.memo.SetFont(font)
 
@@ -239,8 +246,8 @@ class SUBUI(wx.Frame):
 	
 	def update(self, event):
 			end = time.time() - self.start
-			elapsed_time = str(int(end)) + ' seconds'
-			self.elapsed_time.SetLabel(elapsed_time)
+#			elapsed_time = str(int(end)) + ' seconds'
+#			self.elapsed_time.SetLabel(elapsed_time)
 	
 	def on_close(self, evt):
 		self.MakeModal(False)
@@ -252,6 +259,17 @@ class SUBUI(wx.Frame):
 		#http://effbot.org/librarybook/dbm.htm
 		input_str = self.word_search.GetValue()
 		if input_str == self.last_word:
+			self.count = self.count + 1
+			self.gauge.SetValue(self.count)
+			if self.count == self.task_range:
+				self.word_search.Clear()
+				self.zh_meaning.Clear()
+				self.memo.Clear()
+				self.timer1.Stop()
+				self.start_btn.SetLabel("Start")
+				self.start_btn.SetFocus()
+				self.gauge.SetLabel("Task Completed")
+				return
 			try:
 				self.last_word = self.zh_li.pop()
 			except IndexError:
@@ -278,14 +296,39 @@ class SUBUI(wx.Frame):
 	def exercise_mode(self):
 		self.db_memo = dbm.open('memo_words', 'c')
 		self.db_words = dbm.open('zh_words', 'c')
-
-
 		self.zh_li = []
-
 		for key in self.db_words.keys():
 			self.zh_li.append(key)
 		shuffle(self.zh_li)
-	
+
+		# gauge count
+		self.count = 0
+		self.task_range = len(self.zh_li)
+
+		self.gauge.SetRange(self.task_range)
+		try:
+			self.last_word = self.zh_li.pop()
+		except IndexError:
+			self.word_search.Clear()
+			self.zh_meaning.Clear()
+			self.memo.Clear()
+			return 
+
+		self.zh_meaning.SetValue(self.db_words[self.last_word].decode('utf-8'))
+		try:
+			self.memo.SetValue(self.db_memo[self.last_word].decode('utf-8'))
+		except KeyError:
+			pass
+		
+	def OnDeleteWord(self,event):
+		
+		try:
+			del self.db_words[self.last_word]
+			del self.db_memo[self.last_word]
+			self.count = self.count + 1
+			self.gauge.SetValue(self.count)
+		except KeyError:
+			pass
 		try:
 			self.last_word = self.zh_li.pop()
 		except IndexError:
