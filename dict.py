@@ -57,7 +57,7 @@ class Example(wx.Frame):
 		self.exercise_btn = wx.Button(panel, label='Exercise')
 			
 		hbox1.Add(self.word_search, proportion=4, flag=wx.EXPAND|wx.LEFT|wx.RIGHT|wx.TOP, border=10)
-		hbox1.Add(self.icon, flag=wx.EXPAND|wx.LEFT|wx.RIGHT|wx.TOP, border=10)
+		hbox1.Add(self.icon, flag=wx.EXPAND|wx.TOP, border=10)
 		hbox1.Add(self.zh_check, proportion=1, flag=wx.LEFT|wx.TOP, border=10)
 		hbox2.Add(self.zh_meaning, proportion=1, flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=10)
 		hbox3.Add(self.memo, proportion=1, flag=wx.EXPAND|wx.LEFT|wx.RIGHT|wx.TOP, border=10)
@@ -159,6 +159,8 @@ class Example(wx.Frame):
 	def	OnSaveMemo(self,e):
 		zh_file = dbm.open('zh_words','c')  
 		memo_file = dbm.open('memo_words','c')  
+		if self.word is None:
+			return 
 		try:
 			zh_file[self.word] = self.zh_meaning.GetValue().strip().encode('utf-8')		
 		except AttributeError: 
@@ -166,6 +168,7 @@ class Example(wx.Frame):
 		memo_file[self.word] = self.memo.GetValue().strip().encode('utf-8')		
 		zh_file.close()
 		memo_file.close()
+		self.word_search.SetFocus()
 
 	def InitSUBUI(self, e):
 		exercise_ui = SUBUI(None,title = 'Exercise')	
@@ -188,6 +191,7 @@ class SUBUI(wx.Frame):
 		self.InitUI()
 
 	def InitUI(self):
+		self.last_word = ""
 
 		panel = wx.Panel(self, -1)
 		panel.SetBackgroundColour('#6f8089')
@@ -204,6 +208,7 @@ class SUBUI(wx.Frame):
 		self.memo = wx.TextCtrl(panel, id = 60, style = wx.TE_MULTILINE)
 		self.word_search = wx.TextCtrl(panel, id = 70, style = wx.PROCESS_ENTER)
 		self.start_btn = wx.Button(panel, id = 72,label='Start')
+		self.icon = wx.StaticBitmap(panel, bitmap=wx.Bitmap('resize_sound.gif'))
 		self.gauge = wx.Gauge(panel)
 		self.del_btn = wx.Button(panel, id = 80, label = 'Delete word')
 
@@ -211,7 +216,8 @@ class SUBUI(wx.Frame):
 		hbox1.Add(self.zh_meaning, proportion=1, flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=10)
 		hbox2.Add(self.memo, proportion=1, flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=10)
 		hbox3.Add(self.word_search, proportion=1, flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=10)
-		hbox3.Add(self.start_btn, proportion=1, flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=10)
+		hbox3.Add(self.start_btn, flag=wx.EXPAND| wx.LEFT|wx.RIGHT, border=10)
+		hbox3.Add(self.icon, flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=10)
 		hbox3.Add(self.gauge, proportion=2, flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=10)
 		hbox4.Add(self.del_btn, flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=10)
 
@@ -261,7 +267,9 @@ class SUBUI(wx.Frame):
 	def OnCheck(self, event):
 
 		#http://effbot.org/librarybook/dbm.htm
-		input_str = self.word_search.GetValue()
+		input_str = self.word_search.GetValue() or None
+		if self.last_word == None:
+			return
 		if input_str == self.last_word:
 			self.count = self.count + 1
 			self.gauge.SetValue(self.count)
@@ -275,7 +283,7 @@ class SUBUI(wx.Frame):
 				self.gauge.SetLabel("Task Completed")
 				return
 			try:
-				self.last_word = self.zh_li.pop()
+				self.last_word = self.zh_li.pop() or None
 			except IndexError:
 				self.word_search.Clear()
 				self.zh_meaning.Clear()
@@ -303,6 +311,10 @@ class SUBUI(wx.Frame):
 		self.zh_li = []
 		for key in self.db_words.keys():
 			self.zh_li.append(key)
+		if len(self.zh_li)== 0:
+			self.timer1.Stop()
+			self.start_btn.SetLabel("Start")
+			return 
 		shuffle(self.zh_li)
 
 		# gauge count
@@ -311,7 +323,7 @@ class SUBUI(wx.Frame):
 
 		self.gauge.SetRange(self.task_range)
 		try:
-			self.last_word = self.zh_li.pop()
+			self.last_word = self.zh_li.pop() or None
 		except IndexError:
 			self.word_search.Clear()
 			self.zh_meaning.Clear()
@@ -336,6 +348,8 @@ class SUBUI(wx.Frame):
 		try:
 			self.last_word = self.zh_li.pop()
 		except IndexError:
+			self.timer1.Stop()
+			self.start_btn.SetLabel("Start")
 			self.word_search.Clear()
 			self.zh_meaning.Clear()
 			self.memo.Clear()
@@ -387,5 +401,3 @@ if __name__ == '__main__':
     app = wx.App(False)
     main_frame = Example(None, title='Dictionary')
     app.MainLoop()
-
-
