@@ -88,7 +88,7 @@ class Example(wx.Frame):
 	def OnSearch(self, event):
 		# Get input word to search
 		#http://stackoverflow.com/questions/17887503/how-can-i-improve-this-code-for-checking-if-text-fields-are-empty-in-wxpython
-		self.word = self.word_search.GetValue() or None
+		self.word = self.word_search.GetValue().strip() or None
 		if self.word is None:
 			self.zh_meaning.Clear()
 			return 
@@ -159,7 +159,7 @@ class Example(wx.Frame):
 	def	OnSaveMemo(self,e):
 		zh_file = dbm.open('zh_words','c')  
 		memo_file = dbm.open('memo_words','c')  
-		if self.word is None:
+		if self.word is '':
 			return 
 		try:
 			zh_file[self.word] = self.zh_meaning.GetValue().strip().encode('utf-8')		
@@ -168,7 +168,7 @@ class Example(wx.Frame):
 		memo_file[self.word] = self.memo.GetValue().strip().encode('utf-8')		
 		zh_file.close()
 		memo_file.close()
-		self.word_search.SetFocus()
+		self.word_search.Clear()
 
 	def InitSUBUI(self, e):
 		exercise_ui = SUBUI(None,title = 'Exercise')	
@@ -192,6 +192,12 @@ class SUBUI(wx.Frame):
 
 	def InitUI(self):
 		self.last_word = ""
+		self.audio_url = ""
+		self.audio_name = ""
+	
+		self.audio_url = ""
+		self.audio_dir = os.getcwd()+"/mp3_dir"
+		self.audio_name = "" 
 
 		panel = wx.Panel(self, -1)
 		panel.SetBackgroundColour('#6f8089')
@@ -234,12 +240,12 @@ class SUBUI(wx.Frame):
 		self.timer1 = wx.Timer(self, id = 100)
 		self.Bind(wx.EVT_TIMER, self.update, self.timer1)
 		self.Bind(wx.EVT_BUTTON, self.OnStartTimer, self.start_btn)
+		self.icon.Bind(wx.EVT_LEFT_DOWN, self.OnSound)
 		self.Bind(wx.EVT_CLOSE, self.on_close)
 		self.Bind(wx.EVT_TEXT_ENTER, self.OnCheck, self.word_search)
 		self.Bind(wx.EVT_BUTTON, self.OnDeleteWord, self.del_btn)
 
 		font = wx.Font(12, wx.DEFAULT, wx.NORMAL, wx.NORMAL)
-#		self.elapsed_time.SetFont(font)
 		self.zh_meaning.SetFont(font)
 		self.memo.SetFont(font)
 
@@ -256,8 +262,6 @@ class SUBUI(wx.Frame):
 	
 	def update(self, event):
 			end = time.time() - self.start
-#			elapsed_time = str(int(end)) + ' seconds'
-#			self.elapsed_time.SetLabel(elapsed_time)
 	
 	def on_close(self, evt):
 		self.MakeModal(False)
@@ -283,7 +287,7 @@ class SUBUI(wx.Frame):
 				self.gauge.SetLabel("Task Completed")
 				return
 			try:
-				self.last_word = self.zh_li.pop() or None
+				self.last_word = self.zh_li.pop() 
 			except IndexError:
 				self.word_search.Clear()
 				self.zh_meaning.Clear()
@@ -298,7 +302,11 @@ class SUBUI(wx.Frame):
 				self.memo.SetValue(self.db_memo[self.last_word].decode('utf-8'))
 			except KeyError:
 				pass
-
+			
+			
+			self.audio_url = "http://translate.google.com/translate_tts?tl=en&q="+self.last_word
+			self.audio_name = self.audio_dir+'/'+self.last_word+'.mp3'
+			process_audio(self.audio_url, self.audio_name)
 			self.word_search.Clear()
 
 		else:
@@ -316,14 +324,13 @@ class SUBUI(wx.Frame):
 			self.start_btn.SetLabel("Start")
 			return 
 		shuffle(self.zh_li)
-
 		# gauge count
 		self.count = 0
 		self.task_range = len(self.zh_li)
 
 		self.gauge.SetRange(self.task_range)
 		try:
-			self.last_word = self.zh_li.pop() or None
+			self.last_word = self.zh_li.pop() 
 		except IndexError:
 			self.word_search.Clear()
 			self.zh_meaning.Clear()
@@ -335,7 +342,10 @@ class SUBUI(wx.Frame):
 			self.memo.SetValue(self.db_memo[self.last_word].decode('utf-8'))
 		except KeyError:
 			pass
-		
+		# play sound after press Start button
+		self.audio_url = "http://translate.google.com/translate_tts?tl=en&q="+self.last_word
+		self.audio_name = self.audio_dir+'/'+self.last_word+'.mp3'
+		process_audio(self.audio_url, self.audio_name)
 	def OnDeleteWord(self,event):
 		
 		try:
@@ -343,6 +353,7 @@ class SUBUI(wx.Frame):
 			del self.db_memo[self.last_word]
 			self.count = self.count + 1
 			self.gauge.SetValue(self.count)
+			self.word_search.SetFocus()
 		except KeyError:
 			pass
 		try:
@@ -360,6 +371,13 @@ class SUBUI(wx.Frame):
 			self.memo.SetValue(self.db_memo[self.last_word].decode('utf-8'))
 		except KeyError:
 			pass
+
+
+	def OnSound(self, event):
+		if self.last_word is "":
+			return
+		else:
+			process_audio(self.audio_url, self.audio_name)
 
 def process_audio(audio_url, mp3_name):
 	if os.path.exists(mp3_name):
