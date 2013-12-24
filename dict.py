@@ -17,9 +17,9 @@ import dbm
 # for exercise mode, shuffle the words list
 from random import shuffle
 
-class Example(wx.Frame):
+class Dictionary(wx.Frame):
 	def __init__(self, parent, title):
-		super(Example, self).__init__(parent, title=title, size=(560, 400))
+		super(Dictionary, self).__init__(parent, title=title, size=(560, 400))
             
 		self.InitUI()
 		self.Centre()
@@ -428,5 +428,5 @@ def mkdir_p(path):
 if __name__ == '__main__':
 
     app = wx.App(False)
-    main_frame = Example(None, title='Dictionary')
+    main_frame = Dictionary(None, title='Dictionary')
     app.MainLoop()
