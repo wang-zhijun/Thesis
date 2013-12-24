@@ -17,10 +17,9 @@ import dbm
 # for exercise mode, shuffle the words list
 from random import shuffle
 
-class Example(wx.Frame):
-  
+class Dictionary(wx.Frame):
 	def __init__(self, parent, title):
-		super(Example, self).__init__(parent, title=title, size=(560, 400))
+		super(Dictionary, self).__init__(parent, title=title, size=(560, 400))
             
 		self.InitUI()
 		self.Centre()
@@ -29,9 +28,13 @@ class Example(wx.Frame):
 		self.word=""
 		self.audio_url = ""
 		self.audio_name = ""
+		
+		# store frame position
+		self.x = 0
+		self.y = 0
 
 		panel = wx.Panel(self, -1)
-		panel.SetBackgroundColour('#6f8089')
+		panel.SetBackgroundColour('#726E6D')
 
 		vbox = wx.BoxSizer(wx.VERTICAL)
 
@@ -42,7 +45,7 @@ class Example(wx.Frame):
 
 		# create,add word area and search button
 		self.word_search = wx.TextCtrl(panel, id = 10, style = wx.PROCESS_ENTER)
-		self.icon = wx.StaticBitmap(panel, bitmap=wx.Bitmap('resize_sound.gif'))
+		self.icon = wx.StaticBitmap(panel, bitmap=wx.Bitmap('resize_voice.png'))
 		self.zh_check = wx.CheckBox(panel, label='中文', size=(30,30))
 		self.zh_check.SetValue(True)
 		
@@ -77,6 +80,7 @@ class Example(wx.Frame):
 		save_btn.Bind(wx.EVT_BUTTON, self.OnSaveMemo)
 		self.exercise_btn.Bind(wx.EVT_BUTTON, self.InitSUBUI) 
 		self.icon.Bind(wx.EVT_LEFT_DOWN, self.OnSound)
+		self.Bind(wx.EVT_MOVE, self.OnMove)
 		panel.SetSizer(vbox)
 
 		mkdir_p('mp3_dir')
@@ -85,6 +89,10 @@ class Example(wx.Frame):
 		self.word_search.SetFont(font)
 		self.zh_meaning.SetFont(font)
 		self.memo.SetFont(font)
+
+	def OnMove(self, e):
+		self.x, self.y = e.GetPosition()
+
 	def OnSearch(self, event):
 		# Get input word to search
 		#http://stackoverflow.com/questions/17887503/how-can-i-improve-this-code-for-checking-if-text-fields-are-empty-in-wxpython
@@ -168,12 +176,12 @@ class Example(wx.Frame):
 		memo_file[self.word] = self.memo.GetValue().strip().encode('utf-8')		
 		zh_file.close()
 		memo_file.close()
-		self.word_search.Clear()
+		self.word_search.SetFocus()
 
 	def InitSUBUI(self, e):
 		exercise_ui = SUBUI(None,title = 'Exercise')	
+		exercise_ui.SetPosition((self.x, self.y)) 
 		exercise_ui.Show(True)	
-		exercise_ui.Centre()	
 		# MakeModal(modal):Disables all other windows in the application so that the user can only interact with this window.
 		exercise_ui.MakeModal(True)
 
@@ -192,9 +200,18 @@ class SUBUI(wx.Frame):
 
 	def InitUI(self):
 		self.last_word = ""
+		self.audio_url = ""
+		self.audio_name = ""
+	
+		self.audio_url = ""
+		self.audio_dir = os.getcwd()+"/mp3_dir"
+		self.audio_name = "" 
+
+		self.db_memo = dbm.open('memo_words', 'c')
+		self.db_words = dbm.open('zh_words', 'c')
 
 		panel = wx.Panel(self, -1)
-		panel.SetBackgroundColour('#6f8089')
+		panel.SetBackgroundColour('#726E6D')
 
 
 		vbox = wx.BoxSizer(wx.VERTICAL)
@@ -208,7 +225,7 @@ class SUBUI(wx.Frame):
 		self.memo = wx.TextCtrl(panel, id = 60, style = wx.TE_MULTILINE)
 		self.word_search = wx.TextCtrl(panel, id = 70, style = wx.PROCESS_ENTER)
 		self.start_btn = wx.Button(panel, id = 72,label='Start')
-		self.icon = wx.StaticBitmap(panel, bitmap=wx.Bitmap('resize_sound.gif'))
+		self.icon = wx.StaticBitmap(panel, bitmap=wx.Bitmap('resize_voice.png'))
 		self.gauge = wx.Gauge(panel)
 		self.del_btn = wx.Button(panel, id = 80, label = 'Delete word')
 
@@ -234,7 +251,7 @@ class SUBUI(wx.Frame):
 		self.timer1 = wx.Timer(self, id = 100)
 		self.Bind(wx.EVT_TIMER, self.update, self.timer1)
 		self.Bind(wx.EVT_BUTTON, self.OnStartTimer, self.start_btn)
-		self.Bind(wx.EVT_LEFT_DOWN,self.icon, self.OnSound)
+		self.icon.Bind(wx.EVT_LEFT_DOWN, self.OnSound)
 		self.Bind(wx.EVT_CLOSE, self.on_close)
 		self.Bind(wx.EVT_TEXT_ENTER, self.OnCheck, self.word_search)
 		self.Bind(wx.EVT_BUTTON, self.OnDeleteWord, self.del_btn)
@@ -267,6 +284,7 @@ class SUBUI(wx.Frame):
 		#http://effbot.org/librarybook/dbm.htm
 		input_str = self.word_search.GetValue() or None
 		if self.last_word == None:
+			self.word_search.Clear()
 			return
 		if input_str == self.last_word:
 			self.count = self.count + 1
@@ -296,7 +314,11 @@ class SUBUI(wx.Frame):
 				self.memo.SetValue(self.db_memo[self.last_word].decode('utf-8'))
 			except KeyError:
 				pass
-
+			
+			
+			self.audio_url = "http://translate.google.com/translate_tts?tl=en&q="+self.last_word
+			self.audio_name = self.audio_dir+'/'+self.last_word+'.mp3'
+			process_audio(self.audio_url, self.audio_name)
 			self.word_search.Clear()
 
 		else:
@@ -304,8 +326,6 @@ class SUBUI(wx.Frame):
 			self.word_search.SelectAll()
 
 	def exercise_mode(self):
-		self.db_memo = dbm.open('memo_words', 'c')
-		self.db_words = dbm.open('zh_words', 'c')
 		self.zh_li = []
 		for key in self.db_words.keys():
 			self.zh_li.append(key)
@@ -314,7 +334,6 @@ class SUBUI(wx.Frame):
 			self.start_btn.SetLabel("Start")
 			return 
 		shuffle(self.zh_li)
-		Example.OnSound()
 		# gauge count
 		self.count = 0
 		self.task_range = len(self.zh_li)
@@ -333,9 +352,13 @@ class SUBUI(wx.Frame):
 			self.memo.SetValue(self.db_memo[self.last_word].decode('utf-8'))
 		except KeyError:
 			pass
-		
+		# play sound after press Start button
+		self.audio_url = "http://translate.google.com/translate_tts?tl=en&q="+self.last_word
+		self.audio_name = self.audio_dir+'/'+self.last_word+'.mp3'
+		process_audio(self.audio_url, self.audio_name)
 	def OnDeleteWord(self,event):
-		
+		if self.last_word == "":
+			return 
 		try:
 			del self.db_words[self.last_word]
 			del self.db_memo[self.last_word]
@@ -362,7 +385,7 @@ class SUBUI(wx.Frame):
 
 
 	def OnSound(self, event):
-		if self.word is "":
+		if self.last_word is "":
 			return
 		else:
 			process_audio(self.audio_url, self.audio_name)
@@ -405,5 +428,5 @@ def mkdir_p(path):
 if __name__ == '__main__':
 
     app = wx.App(False)
-    main_frame = Example(None, title='Dictionary')
+    main_frame = Dictionary(None, title='Dictionary')
     app.MainLoop()
