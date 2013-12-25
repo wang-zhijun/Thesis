@@ -19,7 +19,7 @@ from random import shuffle
 
 class Dictionary(wx.Frame):
 	def __init__(self, parent, title):
-		super(Dictionary, self).__init__(parent, title=title, size=(560, 400))
+		super(Dictionary, self).__init__(parent, title=title, size=(560, 420))
             
 		self.InitUI()
 		self.Centre()
@@ -85,7 +85,7 @@ class Dictionary(wx.Frame):
 
 		mkdir_p('mp3_dir')
 
-		font = wx.Font(12, wx.DEFAULT, wx.NORMAL, wx.NORMAL)
+		font = wx.Font(18, wx.DEFAULT, wx.NORMAL, wx.NORMAL)
 		self.word_search.SetFont(font)
 		self.zh_meaning.SetFont(font)
 		self.memo.SetFont(font)
@@ -156,7 +156,7 @@ class Dictionary(wx.Frame):
 		##############################################
 		#try to find the memo about the word from file
 		##############################################
-		f = dbm.open('memo_words', 'c')
+		f = dbm.open('memo_words', "c")
 		try:
 			self.memo.SetValue(f[self.word].decode('utf-8'))
 		except KeyError, e:
@@ -194,7 +194,7 @@ class Dictionary(wx.Frame):
 
 class SUBUI(wx.Frame):
 	def __init__(self, parent, title):
-		super(SUBUI, self).__init__(parent, title=title, size=(560, 400))
+		super(SUBUI, self).__init__(parent, title=title, size=(560, 420))
 		
 		self.InitUI()
 
@@ -256,7 +256,7 @@ class SUBUI(wx.Frame):
 		self.Bind(wx.EVT_TEXT_ENTER, self.OnCheck, self.word_search)
 		self.Bind(wx.EVT_BUTTON, self.OnDeleteWord, self.del_btn)
 
-		font = wx.Font(12, wx.DEFAULT, wx.NORMAL, wx.NORMAL)
+		font = wx.Font(18, wx.DEFAULT, wx.NORMAL, wx.NORMAL)
 		self.zh_meaning.SetFont(font)
 		self.memo.SetFont(font)
 
@@ -393,7 +393,7 @@ class SUBUI(wx.Frame):
 def process_audio(audio_url, mp3_name):
 	if os.path.exists(mp3_name):
 		if sys.platform == 'darwin':
-			process = subprocess.Popen(['afplay', mp3_name], stdout=dev_null, stderr=dev_null)
+			process = subprocess.Popen(['afplay', mp3_name], stdout=open("/dev/null","w"),stderr=subprocess.STDOUT)
 		else:
 			process = subprocess.Popen(['play', mp3_name], stdout=open("/dev/null","w"), stderr=subprocess.STDOUT)
 #		retcode = process.wait()
@@ -402,7 +402,7 @@ def process_audio(audio_url, mp3_name):
 		download_mp3(audio_url, mp3_name)
 		# find wait function on the last line
 		if sys.platform == 'darwin':
-			process = subprocess.Popen(['afplay', mp3_name], stdout=dev_null, stderr=dev_null)
+			process = subprocess.Popen(['afplay', mp3_name], stdout=open("/dev/null","w"), stderr=subprocess.STDOUT)
 		else:
 			process = subprocess.Popen(['play', mp3_name], stdout=open("/dev/null","w"), stderr=subprocess.STDOUT)
 #		retcode = process.wait()
