@@ -46,7 +46,7 @@ class Dictionary(wx.Frame):
 		# create,add word area and search button
 		self.word_search = wx.TextCtrl(panel, id = 10, style = wx.PROCESS_ENTER)
 		self.icon = wx.StaticBitmap(panel, bitmap=wx.Bitmap('resize_voice.png'))
-		self.zh_check = wx.CheckBox(panel, label='中文', size=(30,30))
+		self.zh_check = wx.CheckBox(panel, label='中文', size=(60,30))
 		self.zh_check.SetValue(True)
 		
   
@@ -228,6 +228,8 @@ class SUBUI(wx.Frame):
 		self.icon = wx.StaticBitmap(panel, bitmap=wx.Bitmap('resize_voice.png'))
 		self.gauge = wx.Gauge(panel)
 		self.del_btn = wx.Button(panel, id = 80, label = 'Delete word')
+		self.sc = wx.SpinCtrl(panel, id = 82, value='15', size=(60,25) )
+		self.sc.SetRange(1,1000)
 
 
 		hbox1.Add(self.zh_meaning, proportion=1, flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=10)
@@ -237,6 +239,7 @@ class SUBUI(wx.Frame):
 		hbox3.Add(self.icon, flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=10)
 		hbox3.Add(self.gauge, proportion=2, flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=10)
 		hbox4.Add(self.del_btn, flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=10)
+		hbox4.Add(self.sc, flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=10)
 
 		vbox.Add(hbox1, flag=wx.EXPAND|wx.LEFT|wx.RIGHT|wx.TOP, border=10)
 		vbox.Add(hbox2, flag=wx.EXPAND|wx.LEFT|wx.RIGHT|wx.TOP, border=10)
@@ -283,13 +286,14 @@ class SUBUI(wx.Frame):
 
 		#http://effbot.org/librarybook/dbm.htm
 		input_str = self.word_search.GetValue() or None
-		if self.last_word == None:
+		if self.last_word == "":
 			self.word_search.Clear()
 			return
 		if input_str == self.last_word:
 			self.count = self.count + 1
 			self.gauge.SetValue(self.count)
 			if self.count == self.task_range:
+				self.last_word = ''
 				self.word_search.Clear()
 				self.zh_meaning.Clear()
 				self.memo.Clear()
@@ -301,12 +305,12 @@ class SUBUI(wx.Frame):
 			try:
 				self.last_word = self.zh_li.pop() 
 			except IndexError:
+				self.start_btn.SetFocus()
 				self.word_search.Clear()
 				self.zh_meaning.Clear()
 				self.memo.Clear()
 				self.timer1.Stop()
 				self.start_btn.SetLabel("Start")
-				self.start_btn.SetFocus()
 				return 	
 
 			self.zh_meaning.SetValue(self.db_words[self.last_word].decode('utf-8'))
@@ -334,6 +338,8 @@ class SUBUI(wx.Frame):
 			self.start_btn.SetLabel("Start")
 			return 
 		shuffle(self.zh_li)
+		practice_number = self.sc.GetValue()
+		self.zh_li = self.zh_li[0:practice_number]
 		# gauge count
 		self.count = 0
 		self.task_range = len(self.zh_li)
@@ -382,6 +388,9 @@ class SUBUI(wx.Frame):
 			self.memo.SetValue(self.db_memo[self.last_word].decode('utf-8'))
 		except KeyError:
 			pass
+		self.audio_url = "http://translate.google.com/translate_tts?tl=en&q="+self.last_word
+		self.audio_name = self.audio_dir+'/'+self.last_word+'.mp3'
+		process_audio(self.audio_url, self.audio_name)
 
 
 	def OnSound(self, event):
